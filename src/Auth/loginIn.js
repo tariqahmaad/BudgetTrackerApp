@@ -20,10 +20,18 @@ import { auth } from '../firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const emailIcon = require('../../assets/images/emailIcon.png');
-const passwordIcon = require('../../assets/images/passwordIcon.png');
-const googleIcon = require('../../assets/images/googleIcon.png');
-const facebookIcon = require('../../assets/images/facebookIcon.png');
+const emailIcon = Platform.OS === 'web'
+    ? require('../../assets/images/emailIcon.png')
+    : require('../../assets/images/emailIcon.png');
+const passwordIcon = Platform.OS === 'web'
+    ? require('../../assets/images/passwordIcon.png')
+    : require('../../assets/images/passwordIcon.png');
+const googleIcon = Platform.OS === 'web'
+    ? require('../../assets/images/googleIcon.png')
+    : require('../../assets/images/googleIcon.png');
+const facebookIcon = Platform.OS === 'web'
+    ? require('../../assets/images/facebookIcon.png')
+    : require('../../assets/images/facebookIcon.png');
 
 export default function LoginIn() {
     const [email, setEmail] = useState('');
@@ -77,11 +85,11 @@ export default function LoginIn() {
 
                 // Clear any existing errors
                 setEmailError('');
-                
+
                 // Reset fields
                 setEmail('');
                 setPassword('');
-                
+
                 // Navigate to Dashboard
                 navigation.replace('Dashboard'); // Using replace instead of navigate
             } else {
@@ -90,7 +98,7 @@ export default function LoginIn() {
         } catch (error) {
             console.error('Login error:', error);
             let errorMessage;
-            
+
             switch (error.code) {
                 case 'auth/invalid-email':
                     errorMessage = 'Invalid email format';
@@ -107,7 +115,7 @@ export default function LoginIn() {
                 default:
                     errorMessage = 'Login failed. Please try again.';
             }
-            
+
             Alert.alert('Login Error', errorMessage);
         } finally {
             setLoading(false);
@@ -120,15 +128,28 @@ export default function LoginIn() {
 
     return (
         <SafeAreaView style={styles.safe}>
-            <KeyboardAvoidingView 
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.keyboardView}
+            <KeyboardAvoidingView
+                behavior={Platform.OS === "ios" ? "padding" : undefined}
+                style={[
+                    styles.keyboardView,
+                    Platform.OS === 'web' && {
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                    }
+                ]}
             >
-                <ScrollView 
-                    contentContainerStyle={styles.scrollContent}
+                <ScrollView
+                    contentContainerStyle={[
+                        styles.scrollContent,
+                        Platform.OS === 'web' && {
+                            flex: 1,
+                            justifyContent: 'center'
+                        }
+                    ]}
                     keyboardShouldPersistTaps="handled"
                 >
-                    <Animated.View 
+                    <Animated.View
                         style={[styles.container, { opacity: fadeAnim }]}
                         removeClippedSubviews={false}
                     >
@@ -141,62 +162,64 @@ export default function LoginIn() {
                         <Text style={styles.title}>Welcome Back!</Text>
                         <Text style={styles.subtitle}>Please sign in to continue</Text>
 
-                        <View style={styles.inputContainer}>
-                            <Image source={emailIcon} style={styles.inputIcon} />
-                            <TextInput
-                                style={[styles.input, emailError && styles.inputError]}
-                                placeholder="Email"
-                                value={email}
-                                onChangeText={(text) => {
-                                    setEmail(text);
-                                    if (emailError) validateEmail(text); // Revalidate on change if there was an error
-                                }}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                onBlur={() => validateEmail(email)} // Validate when focus leaves the field
-                            />
-                        </View>
-                        {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+                        <View style={styles.formWrapper}>
+                            <View style={styles.inputContainer}>
+                                <Image source={emailIcon} style={styles.inputIcon} />
+                                <TextInput
+                                    style={[styles.input, emailError && styles.inputError]}
+                                    placeholder="Email"
+                                    value={email}
+                                    onChangeText={(text) => {
+                                        setEmail(text);
+                                        if (emailError) validateEmail(text); // Revalidate on change if there was an error
+                                    }}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    onBlur={() => validateEmail(email)} // Validate when focus leaves the field
+                                />
+                            </View>
+                            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-                        <View style={styles.inputContainer}>
-                            <Image source={passwordIcon} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
-                        </View>
+                            <View style={styles.inputContainer}>
+                                <Image source={passwordIcon} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Password"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry
+                                />
+                            </View>
 
-                        <View style={styles.rememberMeContainer}>
+                            <View style={styles.rememberMeContainer}>
+                                <TouchableOpacity
+                                    style={styles.checkbox}
+                                    onPress={() => setRememberMe(!rememberMe)}
+                                >
+                                    <Text>{rememberMe ? '☑' : '☐'}</Text>
+                                </TouchableOpacity>
+                                <Text>Remember me</Text>
+                            </View>
+
                             <TouchableOpacity
-                                style={styles.checkbox}
-                                onPress={() => setRememberMe(!rememberMe)}
+                                style={styles.forgotPassword}
+                                onPress={handleForgotPassword}
                             >
-                                <Text>{rememberMe ? '☑' : '☐'}</Text>
+                                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                             </TouchableOpacity>
-                            <Text>Remember me</Text>
+
+                            <TouchableOpacity
+                                style={[styles.button, loading && styles.disabledButton]}
+                                onPress={handleLogin}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.buttonText}>LOGIN</Text>
+                                )}
+                            </TouchableOpacity>
                         </View>
-
-                        <TouchableOpacity
-                            style={styles.forgotPassword}
-                            onPress={handleForgotPassword}
-                        >
-                            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.button, loading && styles.disabledButton]}
-                            onPress={handleLogin}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.buttonText}>LOGIN</Text>
-                            )}
-                        </TouchableOpacity>
 
                         <View style={styles.divider}>
                             <View style={styles.dividerLine} />
@@ -229,20 +252,35 @@ export default function LoginIn() {
 const styles = StyleSheet.create({
     safe: {
         flex: 1,
-        backgroundColor: '#fff'
+        backgroundColor: '#fff',
+        ...(Platform.OS === 'web' && {
+            maxWidth: 480,
+            alignSelf: 'center',
+            width: '100%',
+            height: '100vh'
+        })
     },
     keyboardView: {
         flex: 1
     },
     scrollContent: {
         flexGrow: 1,
-        justifyContent: 'center'
+        ...(Platform.OS === 'web' && {
+            display: 'flex',
+            minHeight: '100vh'
+        })
     },
     container: {
         flex: 1,
         paddingHorizontal: 20,
         paddingVertical: 30,
-        backgroundColor: '#fff'
+        backgroundColor: '#fff',
+        ...(Platform.OS === 'web' && {
+            justifyContent: 'center',
+            width: 500,
+            maxWidth: '100%',
+            alignItems: 'center'
+        })
     },
     logo: {
         width: 120,
@@ -377,5 +415,20 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.7,
+    },
+    formWrapper: {
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+        padding: 20,
+        backgroundColor: '#fff',
+        marginBottom: 20,
+        ...(Platform.OS === 'web' && {
+            width: '100%',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+        })
     },
 });

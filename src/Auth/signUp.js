@@ -112,69 +112,71 @@ export default function SignUp() {
                         <Text style={styles.title}>Create Account</Text>
                         <Text style={styles.subtitle}>Please fill in the form to continue</Text>
 
-                        <View style={styles.inputContainer}>
-                            <Image source={userIcon} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Name"
-                                value={name}
-                                onChangeText={setName}
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <Image source={emailIcon} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Email"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <Image source={passwordIcon} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                value={password}
-                                onChangeText={handlePasswordChange}
-                                secureTextEntry
-                            />
-                        </View>
-
-                        {password && (
-                            <View style={styles.passwordStrength}>
-                                <Text style={styles[`${passwordStrength}Password`]}>
-                                    Password Strength: {passwordStrength}
-                                </Text>
+                        <View style={styles.formWrapper}>
+                            <View style={styles.inputContainer}>
+                                <Image source={userIcon} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Name"
+                                    value={name}
+                                    onChangeText={setName}
+                                />
                             </View>
-                        )}
 
-                        <View style={styles.inputContainer}>
-                            <Image source={phoneIcon} style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Phone Number"
-                                value={phoneNumber}
-                                onChangeText={setPhoneNumber}
-                                keyboardType="phone-pad"
-                            />
-                        </View>
+                            <View style={styles.inputContainer}>
+                                <Image source={emailIcon} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Email"
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
 
-                        <TouchableOpacity
-                            style={[styles.button, loading && styles.disabledButton]}
-                            onPress={handleSignUp}
-                            disabled={loading}
-                        >
-                            {loading ? (
-                                <ActivityIndicator color="#fff" />
-                            ) : (
-                                <Text style={styles.buttonText}>SIGN UP</Text>
+                            <View style={styles.inputContainer}>
+                                <Image source={passwordIcon} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Password"
+                                    value={password}
+                                    onChangeText={handlePasswordChange}
+                                    secureTextEntry
+                                />
+                            </View>
+
+                            {password && (
+                                <View style={styles.passwordStrength}>
+                                    <Text style={styles[`${passwordStrength}Password`]}>
+                                        Password Strength: {passwordStrength}
+                                    </Text>
+                                </View>
                             )}
-                        </TouchableOpacity>
+
+                            <View style={styles.inputContainer}>
+                                <Image source={phoneIcon} style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Phone Number"
+                                    value={phoneNumber}
+                                    onChangeText={setPhoneNumber}
+                                    keyboardType="phone-pad"
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.button, loading && styles.disabledButton]}
+                                onPress={handleSignUp}
+                                disabled={loading}
+                            >
+                                {loading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.buttonText}>SIGN UP</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
 
                         <View style={styles.loginContainer}>
                             <Text style={styles.loginText}>Already have an account? </Text>
@@ -192,19 +194,35 @@ export default function SignUp() {
 const styles = StyleSheet.create({
     safe: {
         flex: 1,
-        backgroundColor: '#fff'
+        backgroundColor: '#fff',
+        ...(Platform.OS === 'web' && {
+            maxWidth: 480,
+            alignSelf: 'center',
+            width: '100%',
+            height: '100vh'
+        })
     },
     keyboardView: {
         flex: 1
     },
     scrollContent: {
         flexGrow: 1,
+        ...(Platform.OS === 'web' && {
+            display: 'flex',
+            minHeight: '100vh'
+        })
     },
     container: {
         flex: 1,
         paddingHorizontal: 20,
         paddingVertical: 30,
-        backgroundColor: '#fff'
+        backgroundColor: '#fff',
+        ...(Platform.OS === 'web' && {
+            justifyContent: 'center',
+            width: 500,
+            maxWidth: '100%',
+            alignItems: 'center'
+        })
     },
     title: {
         fontSize: 28,
@@ -290,5 +308,20 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.7,
+    },
+    formWrapper: {
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+        padding: 20,
+        backgroundColor: '#fff',
+        marginBottom: 20,
+        ...(Platform.OS === 'web' && {
+            width: '100%',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.1,
+            shadowRadius: 4,
+        })
     },
 });
