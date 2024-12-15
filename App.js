@@ -16,22 +16,30 @@ export default function App() {
         <Stack.Navigator 
           initialRouteName="Login"
           screenOptions={{
-            headerShown: Platform.OS === 'web' ? false : true,
+            headerShown: false,
             contentStyle: {
               backgroundColor: '#fff',
-              flex: 1
+              ...(Platform.OS === 'android' && {
+                // paddingTop: '15%', // Add padding for Android
+              }),
+              ...(Platform.OS === 'web' && {
+                minHeight: '100vh',
+                width: '100%',
+                maxWidth: '100%',
+                alignSelf: 'center',
+                overflow: 'hidden'
+              })
             }
           }}
         >
           <Stack.Screen name="Login" component={LoginIn} />
           <Stack.Screen name="SignUp" component={SignUp} />
           <Stack.Screen name="forgotPassword" component={ForgotPassword} />
-          <Stack.Screen
-            name="Dashboard"
+          <Stack.Screen 
+            name="Dashboard" 
             component={DashBoard}
             options={{
-              headerShown: false,
-              gestureEnabled: false,
+              gestureEnabled: false
             }}
           />
         </Stack.Navigator>

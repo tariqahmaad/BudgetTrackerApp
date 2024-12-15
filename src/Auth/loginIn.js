@@ -9,6 +9,7 @@ import {
     ActivityIndicator,
     Image,
     Animated,
+    Easing,
     Dimensions,
     SafeAreaView,
     KeyboardAvoidingView,
@@ -41,11 +42,15 @@ export default function LoginIn() {
     const [emailError, setEmailError] = useState('');
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const navigation = useNavigation();
+    const [isValidEmail, setIsValidEmail] = useState(true);
+    const [isValidPassword, setIsValidPassword] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
+    const shakeAnimation = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         Animated.timing(fadeAnim, {
             toValue: 1,
-            duration: 500, // Changed from 1000 to 500
+            duration: 500,
             useNativeDriver: true
         }).start();
     }, []);
@@ -60,41 +65,83 @@ export default function LoginIn() {
         return true;
     };
 
+    const shakeError = () => {
+        Animated.sequence([
+            Animated.timing(shakeAnimation, {
+                toValue: 10,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnimation, {
+                toValue: -10,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+            Animated.timing(shakeAnimation, {
+                toValue: 0,
+                duration: 100,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    };
+
+    const validateEmailRealTime = (text) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const isValid = emailRegex.test(text);
+        setIsValidEmail(isValid);
+        return isValid;
+    };
+
+    const validatePasswordRealTime = (text) => {
+        const isValid = text.length >= 6;
+        setIsValidPassword(isValid);
+        return isValid;
+    };
+
+    const getInputBorderColor = (isValid) => {
+        if (isValid === null) return '#e0e0e0';
+        return isValid ? '#34c759' : '#ff3b30';
+    };
+
     const handleLogin = async () => {
-        // First, check if email and password are provided
-        if (!email || !password) {
-            Alert.alert('Error', 'Please fill in all fields');
+        if (!validateEmailRealTime(email) || !validatePasswordRealTime(password)) {
+            shakeError();
             return;
         }
 
-        // Then, validate the email format
-        if (!validateEmail(email)) return;
-
         setLoading(true);
+        const loadingAnimation = Animated.sequence([
+            Animated.timing(fadeAnim, {
+                toValue: 0.3,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+        ]);
+
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
             if (user) {
-                // Store user credentials if remember me is checked
                 if (rememberMe) {
                     await AsyncStorage.setItem('userEmail', email);
                 } else {
                     await AsyncStorage.removeItem('userEmail');
                 }
 
-                // Clear any existing errors
                 setEmailError('');
-
-                // Reset fields
                 setEmail('');
                 setPassword('');
-
-                // Navigate to Dashboard
-                navigation.replace('Dashboard'); // Using replace instead of navigate
+                navigation.replace('Dashboard');
             } else {
                 Alert.alert('Error', 'Login failed. Please try again.');
             }
+            loadingAnimation.start();
         } catch (error) {
             console.error('Login error:', error);
             let errorMessage;
@@ -117,6 +164,7 @@ export default function LoginIn() {
             }
 
             Alert.alert('Login Error', errorMessage);
+            shakeError();
         } finally {
             setLoading(false);
         }
@@ -130,40 +178,21 @@ export default function LoginIn() {
         <SafeAreaView style={styles.safe}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : undefined}
-                style={[
-                    styles.keyboardView,
-                    Platform.OS === 'web' && {
-                        flex: 1,
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                    }
-                ]}
+                style={styles.keyboardView}
             >
                 <ScrollView
-                    contentContainerStyle={[
-                        styles.scrollContent,
-                        Platform.OS === 'web' && {
-                            flex: 1,
-                            justifyContent: 'center'
-                        }
-                    ]}
+                    contentContainerStyle={styles.scrollContent}
                     keyboardShouldPersistTaps="handled"
                 >
                     <Animated.View
-                        style={[styles.container, { opacity: fadeAnim }]}
+                        style={[styles.container, { opacity: fadeAnim, transform: [{ translateX: shakeAnimation }] }]}
                         removeClippedSubviews={false}
                     >
-                        {/* Logo section - uncomment when you have the logo
-                        <Image
-                            source={require('../../assets/images/logo.png')}
-                            style={styles.logo}
-                        /> 
-                        */}
                         <Text style={styles.title}>Welcome Back!</Text>
                         <Text style={styles.subtitle}>Please sign in to continue</Text>
 
                         <View style={styles.formWrapper}>
-                            <View style={styles.inputContainer}>
+                            <View style={[styles.inputContainer, { borderColor: getInputBorderColor(isValidEmail) }]}>
                                 <Image source={emailIcon} style={styles.inputIcon} />
                                 <TextInput
                                     style={[styles.input, emailError && styles.inputError]}
@@ -171,24 +200,35 @@ export default function LoginIn() {
                                     value={email}
                                     onChangeText={(text) => {
                                         setEmail(text);
-                                        if (emailError) validateEmail(text); // Revalidate on change if there was an error
+                                        validateEmailRealTime(text);
                                     }}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
-                                    onBlur={() => validateEmail(email)} // Validate when focus leaves the field
+                                    onBlur={() => validateEmail(email)}
                                 />
+                                {email ? (
+                                    <TouchableOpacity onPress={() => setEmail('')}>
+                                        <Text style={styles.clearText}>✕</Text>
+                                    </TouchableOpacity>
+                                ) : null}
                             </View>
                             {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
 
-                            <View style={styles.inputContainer}>
+                            <View style={[styles.inputContainer, { borderColor: getInputBorderColor(isValidPassword) }]}>
                                 <Image source={passwordIcon} style={styles.inputIcon} />
                                 <TextInput
                                     style={styles.input}
                                     placeholder="Password"
                                     value={password}
-                                    onChangeText={setPassword}
-                                    secureTextEntry
+                                    onChangeText={(text) => {
+                                        setPassword(text);
+                                        validatePasswordRealTime(text);
+                                    }}
+                                    secureTextEntry={!showPassword}
                                 />
+                                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                                    <Text>{showPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                                </TouchableOpacity>
                             </View>
 
                             <View style={styles.rememberMeContainer}>
@@ -242,6 +282,7 @@ export default function LoginIn() {
                                 <Text style={styles.signupLink}>Sign Up</Text>
                             </TouchableOpacity>
                         </View>
+
                     </Animated.View>
                 </ScrollView>
             </KeyboardAvoidingView>
@@ -253,11 +294,14 @@ const styles = StyleSheet.create({
     safe: {
         flex: 1,
         backgroundColor: '#fff',
+        ...(Platform.OS === 'android' && {
+            paddingTop: 35
+        }),
         ...(Platform.OS === 'web' && {
-            maxWidth: 480,
             alignSelf: 'center',
             width: '100%',
-            height: '100vh'
+            maxWidth: 480,
+            height: '100vh',
         })
     },
     keyboardView: {
@@ -265,28 +309,20 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         flexGrow: 1,
+        justifyContent: 'center',
+        paddingHorizontal: 20,
         ...(Platform.OS === 'web' && {
-            display: 'flex',
-            minHeight: '100vh'
+            minHeight: '100vh',
+            boxSizing: 'border-box'
         })
     },
     container: {
-        flex: 1,
-        paddingHorizontal: 20,
         paddingVertical: 30,
         backgroundColor: '#fff',
-        ...(Platform.OS === 'web' && {
-            justifyContent: 'center',
-            width: 500,
-            maxWidth: '100%',
-            alignItems: 'center'
-        })
-    },
-    logo: {
-        width: 120,
-        height: 120,
+        justifyContent: 'center',
         alignSelf: 'center',
-        marginBottom: 30,
+        width: '100%',
+        maxWidth: 480,
     },
     title: {
         fontSize: 28,
@@ -300,6 +336,19 @@ const styles = StyleSheet.create({
         color: '#666',
         textAlign: 'center',
         marginBottom: 30,
+    },
+    formWrapper: {
+        width: '100%',
+        borderWidth: 2,
+        borderColor: '#e0e0e0',
+        borderRadius: 8,
+        padding: 20,
+        backgroundColor: '#fff',
+        marginBottom: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -416,19 +465,14 @@ const styles = StyleSheet.create({
     disabledButton: {
         opacity: 0.7,
     },
-    formWrapper: {
-        borderWidth: 2,
-        borderColor: '#e0e0e0',
-        borderRadius: 8,
-        padding: 20,
-        backgroundColor: '#fff',
-        marginBottom: 20,
-        ...(Platform.OS === 'web' && {
-            width: '100%',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 4,
-        })
+    clearText: {
+        color: '#666',
+        padding: 8,
+    },
+    validInput: {
+        borderColor: '#34c759',
+    },
+    invalidInput: {
+        borderColor: '#ff3b30',
     },
 });
