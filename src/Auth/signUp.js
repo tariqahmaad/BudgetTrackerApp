@@ -264,26 +264,33 @@ export default function SignUp() {
                 role: "user"
             });
 
-            Alert.alert(
-                'Success',
-                'Account created successfully!',
-                [
-                    {
-                        text: 'OK',
-                        onPress: () => {
-                            setName('');
-                            setEmail('');
-                            setPassword('');
-                            setPhoneNumber('');
-                            setAddress('');
-                            navigation.reset({
-                                index: 0,
-                                routes: [{ name: 'Login' }],
-                            });
+            const successCallback = () => {
+                setName('');
+                setEmail('');
+                setPassword('');
+                setPhoneNumber('');
+                setAddress('');
+                navigation.reset({
+                    index: 0,
+                    routes: [{ name: 'Login' }],
+                });
+            };
+
+            if (Platform.OS === 'web') {
+                window.alert('Account created successfully!');
+                successCallback();
+            } else {
+                Alert.alert(
+                    'Success',
+                    'Account created successfully!',
+                    [
+                        {
+                            text: 'OK',
+                            onPress: successCallback
                         }
-                    }
-                ]
-            );
+                    ]
+                );
+            }
         } catch (error) {
             let errorMessage = 'Failed to create account';
             if (error.code === 'auth/email-already-in-use') {
@@ -293,7 +300,12 @@ export default function SignUp() {
             } else if (error.code === 'auth/weak-password') {
                 errorMessage = 'Password should be at least 6 characters';
             }
-            Alert.alert('Error', errorMessage);
+            
+            if (Platform.OS === 'web') {
+                window.alert(errorMessage);
+            } else {
+                Alert.alert('Error', errorMessage);
+            }
             console.error('Signup error:', error);
         } finally {
             setLoading(false);
