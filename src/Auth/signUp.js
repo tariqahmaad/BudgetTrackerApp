@@ -396,6 +396,7 @@ const styles = StyleSheet.create({
         paddingTop: screenWidth < 600 ? 30 : 50,
         width: '100%',
         maxWidth: screenWidth < 600 ? '100%' : 600,
+
     },
     title: {
         fontSize: screenWidth < 600 ? 28 : 36,
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
         marginBottom: screenWidth < 600 ? 10 : 20,
         textAlign: 'center',
         color: '#1a1a1a',
-        marginTop: screenWidth < 600 ? 40 : 60,
+        marginTop: screenWidth < 600 ? 70 : "50%",
     },
     subtitle: {
         fontSize: screenWidth < 600 ? 16 : 18,
@@ -421,7 +422,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         backgroundColor: '#fff',
         height: screenWidth < 600 ? 55 : 60,
-        width: screenWidth < 600 ? '100%' : '80%',
+        width: screenWidth < 600 ? '100%' : '100%',
         maxWidth: 500,
         shadowColor: "#000",
         shadowOffset: {
@@ -440,7 +441,7 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        fontSize: screenWidth < 600 ? 16 : 18,
+        fontSize: screenWidth < 600 ? 16 : 16,
     },
     button: {
         backgroundColor: '#007AFF',
@@ -556,7 +557,7 @@ const styles = StyleSheet.create({
     },
     addressContainer: {
         height: screenWidth < 600 ? 120 : 150,
-        width: screenWidth < 600 ? '90%' : '80%',
+        width: screenWidth < 600 ? '95%' : '90%',
         maxWidth: 500,
     },
     multilineInput: {
