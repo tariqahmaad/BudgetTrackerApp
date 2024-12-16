@@ -289,13 +289,13 @@ export default function SignUp() {
 
             await addDoc(collection(db, 'users'), {
                 uid: user.uid,
-                address: address || null,
-                createdAt: new Date(),
-                email: email,
-                lastLogin: new Date(),
                 name: name,
+                email: email,
+                address: address || null,
                 phoneNumber: phoneNumber || null,
-                role: "user"
+                role: "user",
+                createdAt: new Date(),
+                lastLogin: new Date(),
             });
 
             const successCallback = () => {
@@ -326,7 +326,7 @@ export default function SignUp() {
         } catch (error) {
             console.error('Signup error:', error);
             const errorMessage = getFirebaseErrorMessage(error.code);
-            
+
             if (Platform.OS === 'web') {
                 window.alert(errorMessage);
             } else {
