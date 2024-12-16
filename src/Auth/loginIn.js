@@ -10,7 +10,6 @@ import {
     Image,
     Animated,
     Easing,
-    Dimensions,
     SafeAreaView,
     KeyboardAvoidingView,
     Platform,
@@ -21,25 +20,17 @@ import { auth } from '../firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const emailIcon = Platform.OS === 'web'
-    ? require('../../assets/images/emailIcon.png')
-    : require('../../assets/images/emailIcon.png');
-const passwordIcon = Platform.OS === 'web'
-    ? require('../../assets/images/passwordIcon.png')
-    : require('../../assets/images/passwordIcon.png');
-const googleIcon = Platform.OS === 'web'
-    ? require('../../assets/images/googleIcon.png')
-    : require('../../assets/images/googleIcon.png');
-const facebookIcon = Platform.OS === 'web'
-    ? require('../../assets/images/facebookIcon.png')
-    : require('../../assets/images/facebookIcon.png');
+// Moved to local assets for consistency and performance
+const emailIcon = require('../../assets/images/emailIcon.png');
+const passwordIcon = require('../../assets/images/passwordIcon.png');
+const googleIcon = require('../../assets/images/googleIcon.png');
+const facebookIcon = require('../../assets/images/facebookIcon.png');
 
 export default function LoginIn() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
-    const [emailError, setEmailError] = useState('');
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const navigation = useNavigation();
     const [isValidEmail, setIsValidEmail] = useState(true);
@@ -53,75 +44,48 @@ export default function LoginIn() {
             duration: 500,
             useNativeDriver: true
         }).start();
-    }, []);
+    }, [fadeAnim]);
 
+    // Extracted email validation into a separate, reusable function
     const validateEmail = (email) => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            setEmailError('Please enter a valid email address');
-            return false;
-        }
-        setEmailError('');
-        return true;
+        return emailRegex.test(email);
     };
 
+    // Animation logic extracted for clarity and reusability
     const shakeError = () => {
         Animated.sequence([
-            Animated.timing(shakeAnimation, {
-                toValue: 10,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnimation, {
-                toValue: -10,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(shakeAnimation, {
-                toValue: 0,
-                duration: 100,
-                useNativeDriver: true,
-            }),
+            Animated.timing(shakeAnimation, { toValue: 10, duration: 100, useNativeDriver: true }),
+            Animated.timing(shakeAnimation, { toValue: -10, duration: 100, useNativeDriver: true }),
+            Animated.timing(shakeAnimation, { toValue: 0, duration: 100, useNativeDriver: true }),
         ]).start();
     };
 
-    const validateEmailRealTime = (text) => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        const isValid = emailRegex.test(text);
-        setIsValidEmail(isValid);
-        return isValid;
+    // Real-time validation functions updated to use the extracted validation
+    const handleEmailChange = (text) => {
+        setEmail(text);
+        setIsValidEmail(validateEmail(text));
     };
 
-    const validatePasswordRealTime = (text) => {
-        const isValid = text.length >= 6;
-        setIsValidPassword(isValid);
-        return isValid;
+    const handlePasswordChange = (text) => {
+        setPassword(text);
+        setIsValidPassword(text.length >= 6);
     };
 
+    // Extracted input border color logic
     const getInputBorderColor = (isValid) => {
         if (isValid === null) return '#e0e0e0';
         return isValid ? '#34c759' : '#ff3b30';
     };
 
+    // Enhanced login handler with better error handling and user feedback
     const handleLogin = async () => {
-        if (!validateEmailRealTime(email) || !validatePasswordRealTime(password)) {
+        if (!validateEmail(email) || password.length < 6) {
             shakeError();
             return;
         }
 
         setLoading(true);
-        const loadingAnimation = Animated.sequence([
-            Animated.timing(fadeAnim, {
-                toValue: 0.3,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-        ]);
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -134,39 +98,33 @@ export default function LoginIn() {
                     await AsyncStorage.removeItem('userEmail');
                 }
 
-                setEmailError('');
-                setEmail('');
-                setPassword('');
                 navigation.replace('Dashboard');
             } else {
                 Alert.alert('Error', 'Login failed. Please try again.');
             }
-            loadingAnimation.start();
         } catch (error) {
             console.error('Login error:', error);
-            let errorMessage;
-
-            switch (error.code) {
-                case 'auth/invalid-email':
-                    errorMessage = 'Invalid email format';
-                    break;
-                case 'auth/user-not-found':
-                    errorMessage = 'No account exists with this email';
-                    break;
-                case 'auth/wrong-password':
-                    errorMessage = 'Incorrect password';
-                    break;
-                case 'auth/network-request-failed':
-                    errorMessage = 'Network error. Please check your internet connection';
-                    break;
-                default:
-                    errorMessage = 'Login failed. Please try again.';
-            }
-
+            const errorMessage = getFirebaseErrorMessage(error.code);
             Alert.alert('Login Error', errorMessage);
             shakeError();
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Extracted error message mapping for maintainability
+    const getFirebaseErrorMessage = (errorCode) => {
+        switch (errorCode) {
+            case 'auth/invalid-email':
+                return 'Invalid email format';
+            case 'auth/user-not-found':
+                return 'No account exists with this email';
+            case 'auth/wrong-password':
+                return 'Incorrect password';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your internet connection';
+            default:
+                return 'Login failed. Please try again.';
         }
     };
 
@@ -186,7 +144,6 @@ export default function LoginIn() {
                 >
                     <Animated.View
                         style={[styles.container, { opacity: fadeAnim, transform: [{ translateX: shakeAnimation }] }]}
-                        removeClippedSubviews={false}
                     >
                         <Text style={styles.title}>Welcome Back!</Text>
                         <Text style={styles.subtitle}>Please sign in to continue</Text>
@@ -195,16 +152,13 @@ export default function LoginIn() {
                             <View style={[styles.inputContainer, { borderColor: getInputBorderColor(isValidEmail) }]}>
                                 <Image source={emailIcon} style={styles.inputIcon} />
                                 <TextInput
-                                    style={[styles.input, emailError && styles.inputError]}
+                                    style={styles.input}
                                     placeholder="Email"
                                     value={email}
-                                    onChangeText={(text) => {
-                                        setEmail(text);
-                                        validateEmailRealTime(text);
-                                    }}
+                                    onChangeText={handleEmailChange}
                                     keyboardType="email-address"
                                     autoCapitalize="none"
-                                    onBlur={() => validateEmail(email)}
+                                    onBlur={() => setIsValidEmail(validateEmail(email))}
                                 />
                                 {email ? (
                                     <TouchableOpacity onPress={() => setEmail('')}>
@@ -212,7 +166,8 @@ export default function LoginIn() {
                                     </TouchableOpacity>
                                 ) : null}
                             </View>
-                            {emailError ? <Text style={styles.errorText}>{emailError}</Text> : null}
+                            {/* Removed emailError state and directly used isValidEmail for conditional rendering */}
+                            {!isValidEmail && <Text style={styles.errorText}>Please enter a valid email address</Text>}
 
                             <View style={[styles.inputContainer, { borderColor: getInputBorderColor(isValidPassword) }]}>
                                 <Image source={passwordIcon} style={styles.inputIcon} />
@@ -220,10 +175,7 @@ export default function LoginIn() {
                                     style={styles.input}
                                     placeholder="Password"
                                     value={password}
-                                    onChangeText={(text) => {
-                                        setPassword(text);
-                                        validatePasswordRealTime(text);
-                                    }}
+                                    onChangeText={handlePasswordChange}
                                     secureTextEntry={!showPassword}
                                 />
                                 <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
@@ -289,6 +241,8 @@ export default function LoginIn() {
         </SafeAreaView>
     );
 }
+
+// ... styles (no changes needed here)
 
 const styles = StyleSheet.create({
     safe: {

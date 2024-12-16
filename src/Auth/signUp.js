@@ -5,11 +5,11 @@ import { db, auth } from '../firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 
+// Consolidated image imports
 const userIcon = require('../../assets/images/userIcon.png');
 const emailIcon = require('../../assets/images/emailIcon.png');
 const passwordIcon = require('../../assets/images/passwordIcon.png');
 const phoneIcon = require('../../assets/images/phoneIcon.png');
-// const addressIcon = require('../../assets/images/addressIcon.png');
 
 const screenWidth = Dimensions.get('window').width;
 const SCREEN_PADDING = 40;
@@ -30,7 +30,6 @@ export default function SignUp() {
     const [stepErrors, setStepErrors] = useState({});
     const slideAnimation = useRef(new Animated.Value(0)).current;
     const scrollViewRef = useRef(null);
-
     const navigation = useNavigation();
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -40,38 +39,52 @@ export default function SignUp() {
             duration: 500,
             useNativeDriver: true
         }).start();
-    }, []);
+    }, [fadeAnim]);
 
+    // Improved password validation with clearer strength feedback
     const validatePassword = (password) => {
-        const strongRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#\\$%\\^&\\*])(?=.{8,})");
-        const mediumRegex = new RegExp("^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.{6,})");
+        const hasLowerCase = /[a-z]/.test(password);
+        const hasUpperCase = /[A-Z]/.test(password);
+        const hasNumber = /[0-9]/.test(password);
+        const hasSpecialChar = /[!@#\$%\^&\*]/.test(password);
+        const isLongEnough = password.length >= 8;
 
-        if (strongRegex.test(password)) {
-            setPasswordStrength('strong');
-        } else if (mediumRegex.test(password)) {
-            setPasswordStrength('medium');
+        let strength = '';
+        if (isLongEnough && hasLowerCase && hasUpperCase && hasNumber && hasSpecialChar) {
+            strength = 'strong';
+        } else if (password.length >= 6 && hasLowerCase && hasUpperCase && hasNumber) {
+            strength = 'medium';
         } else {
-            setPasswordStrength('weak');
+            strength = 'weak';
         }
+
+        setPasswordStrength(strength);
     };
 
     const handlePasswordChange = (text) => {
         setPassword(text);
         validatePassword(text);
+        setStepErrors(prev => ({ ...prev, password: '' }));
     };
 
+    // Consolidated form validation
     const validateForm = () => {
         const errors = {};
-        if (!name) errors.name = 'Name is required';
-        if (!email) errors.email = 'Email is required';
-        if (!password) errors.password = 'Password is required';
+        if (!name.trim()) errors.name = 'Name is required';
+        if (!email.trim()) errors.email = 'Email is required';
+        else if (!/\S+@\S+\.\S+/.test(email)) errors.email = 'Email is invalid';
+        if (!password.trim()) errors.password = 'Password is required';
+        else if (password.length < 6) errors.password = 'Password must be at least 6 characters';
         if (phoneNumber && !/^\+?[\d\s-]{8,}$/.test(phoneNumber)) {
-            errors.phoneNumber = 'Invalid phone number';
+            errors.phoneNumber = 'Invalid phone number format';
         }
+
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
+
+    // Streamlined step validation
     const validateStep = (step) => {
         const errors = {};
 
@@ -88,15 +101,13 @@ export default function SignUp() {
                     errors.phoneNumber = 'Invalid phone number format';
                 }
                 break;
-            case 3:
-                // No validation needed for step 3 as address is optional
-                break;
         }
 
         setStepErrors(errors);
         return Object.keys(errors).length === 0;
     };
 
+    // Extracted progress bar rendering
     const renderProgressBar = () => (
         <View style={styles.progressBar}>
             {[1, 2, 3].map(step => (
@@ -111,17 +122,18 @@ export default function SignUp() {
         </View>
     );
 
+    // Extracted step content rendering
     const renderStepContent = () => (
         <ScrollView
             ref={scrollViewRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            // Removed onMomentumScrollEnd and handleScrollEnd logic to avoid step conflicts
             scrollEnabled={false}
             style={[styles.stepsContainer, { width: containerWidth }]}
             contentContainerStyle={{ width: containerWidth * 3 }}
         >
+            {/* Step 1: Basic Information */}
             <View style={styles.stepWrapper}>
                 <Text style={styles.stepTitle}>Basic Information</Text>
                 <View style={styles.inputContainer}>
@@ -155,6 +167,7 @@ export default function SignUp() {
                 {stepErrors.email && <Text style={styles.errorText}>{stepErrors.email}</Text>}
             </View>
 
+            {/* Step 2: Security Details */}
             <View style={styles.stepWrapper}>
                 <Text style={styles.stepTitle}>Security Details</Text>
                 <View style={styles.formGroup}>
@@ -169,9 +182,12 @@ export default function SignUp() {
                         />
                     </View>
                     {stepErrors.password && <Text style={styles.errorText}>{stepErrors.password}</Text>}
-                    {password && (
+                    {passwordStrength !== '' && (
                         <View style={styles.passwordStrengthContainer}>
-                            <Text style={[styles.passwordText, styles[`${passwordStrength}Password`]]}>
+                            <Text style={[
+                                styles.passwordText,
+                                styles[`${passwordStrength}Password`]
+                            ]}>
                                 Password Strength: {passwordStrength.charAt(0).toUpperCase() + passwordStrength.slice(1)}
                             </Text>
                         </View>
@@ -183,7 +199,10 @@ export default function SignUp() {
                             style={[styles.input, stepErrors.phoneNumber && styles.inputError]}
                             placeholder="Phone Number"
                             value={phoneNumber}
-                            onChangeText={setPhoneNumber}
+                            onChangeText={(text) => {
+                                setPhoneNumber(text);
+                                setStepErrors(prev => ({ ...prev, phoneNumber: '' }));
+                            }}
                             keyboardType="phone-pad"
                         />
                     </View>
@@ -191,6 +210,7 @@ export default function SignUp() {
                 </View>
             </View>
 
+            {/* Step 3: Additional Details */}
             <View style={styles.stepWrapper}>
                 <Text style={styles.stepTitle}>Additional Details</Text>
                 <View style={styles.formGroup}>
@@ -210,6 +230,7 @@ export default function SignUp() {
         </ScrollView>
     );
 
+    // Enhanced step navigation functions
     const animateToNextStep = () => {
         if (!validateStep(currentStep)) {
             return;
@@ -238,22 +259,35 @@ export default function SignUp() {
         }
     };
 
+    // Improved sign-up handler with more informative error messages
     const handleSignUp = async () => {
+        let hasErrors = false;
+
+        // Validate each step
+        for (let i = 1; i <= 3; i++) {
+            if (!validateStep(i)) {
+                setCurrentStep(i); // Move to the step with errors
+                hasErrors = true;
+                break; // Stop validation after finding the first error
+            }
+        }
+
+        // If there are errors, stop the signup process
+        if (hasErrors) {
+            return;
+        }
+
+        // If all steps are valid, proceed with form validation
         if (!validateForm()) {
             return;
         }
 
         setLoading(true);
         try {
-            if (!auth) {
-                throw new Error('Firebase auth is not initialized');
-            }
-
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            const userRef = collection(db, 'users');
-            await addDoc(userRef, {
+            await addDoc(collection(db, 'users'), {
                 uid: user.uid,
                 address: address || null,
                 createdAt: new Date(),
@@ -265,50 +299,62 @@ export default function SignUp() {
             });
 
             const successCallback = () => {
+                // Reset form state
                 setName('');
                 setEmail('');
                 setPassword('');
                 setPhoneNumber('');
                 setAddress('');
+                setFormErrors({});
+                setStepErrors({});
+                setCurrentStep(1);
+
+                // Navigate to Login screen
                 navigation.reset({
                     index: 0,
                     routes: [{ name: 'Login' }],
                 });
             };
 
+            // Use platform-specific alerts
             if (Platform.OS === 'web') {
                 window.alert('Account created successfully!');
                 successCallback();
             } else {
-                Alert.alert(
-                    'Success',
-                    'Account created successfully!',
-                    [
-                        {
-                            text: 'OK',
-                            onPress: successCallback
-                        }
-                    ]
-                );
+                Alert.alert('Success', 'Account created successfully!', [{ text: 'OK', onPress: successCallback }]);
             }
         } catch (error) {
-            let errorMessage = 'Failed to create account';
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = 'Email already exists';
-            } else if (error.code === 'auth/invalid-email') {
-                errorMessage = 'Invalid email address';
-            } else if (error.code === 'auth/weak-password') {
-                errorMessage = 'Password should be at least 6 characters';
-            }
+            console.error('Signup error:', error);
+            const errorMessage = getFirebaseErrorMessage(error.code);
             
             if (Platform.OS === 'web') {
                 window.alert(errorMessage);
             } else {
-                Alert.alert('Error', errorMessage);
+                Alert.alert('Signup Error', errorMessage);
             }
-            console.error('Signup error:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+
+    // Extracted Firebase error message mapping
+    const getFirebaseErrorMessage = (errorCode) => {
+        switch (errorCode) {
+            case 'auth/email-already-in-use':
+                return 'This email is already registered. Please use a different email or try logging in.';
+            case 'auth/invalid-email':
+                return 'Please enter a valid email address.';
+            case 'auth/operation-not-allowed':
+                return 'Email/password sign up is not enabled. Please contact support.';
+            case 'auth/weak-password':
+                return 'Password should be at least 6 characters long.';
+            case 'auth/network-request-failed':
+                return 'Network error. Please check your internet connection.';
+            case 'auth/too-many-requests':
+                return 'Too many attempts. Please try again later.';
+            default:
+                return `Sign up failed: ${errorCode || 'Unknown error occurred'}`;
         }
     };
 
