@@ -17,7 +17,7 @@ import {
 import { auth } from '../firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 
-const emailIcon = require('../../assets/images/emailIcon.png');
+const emailIcon = require('../../assets/login/emailIcon.png');
 
 const ForgotPassword = ({ navigation }) => {
     const [email, setEmail] = useState('');

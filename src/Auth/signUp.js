@@ -2,14 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, TextInput, TouchableOpacity, Text, StyleSheet, Alert, ActivityIndicator, SafeAreaView, KeyboardAvoidingView, ScrollView, Animated, Dimensions, Image, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { db, auth } from '../firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 
 // Consolidated image imports
-const userIcon = require('../../assets/images/userIcon.png');
-const emailIcon = require('../../assets/images/emailIcon.png');
-const passwordIcon = require('../../assets/images/passwordIcon.png');
-const phoneIcon = require('../../assets/images/phoneIcon.png');
+const userIcon = require('../../assets/login/userIcon.png');
+const emailIcon = require('../../assets/login/emailIcon.png');
+const passwordIcon = require('../../assets/login/passwordIcon.png');
+const phoneIcon = require('../../assets/login/phoneIcon.png');
 
 const screenWidth = Dimensions.get('window').width;
 const SCREEN_PADDING = 40;
@@ -287,8 +287,7 @@ export default function SignUp() {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            await addDoc(collection(db, 'users'), {
-                uid: user.uid,
+            await setDoc(doc(db, 'users', user.uid), {
                 name: name,
                 email: email,
                 address: address || null,

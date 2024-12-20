@@ -14,7 +14,7 @@ export default function App() {
     <SafeAreaProvider>
       <NavigationContainer>
         <Stack.Navigator 
-          initialRouteName="Login"
+          initialRouteName="LoginIn"
           screenOptions={{
             headerShown: false,
             contentStyle: {
@@ -39,7 +39,8 @@ export default function App() {
             name="Dashboard" 
             component={DashBoard}
             options={{
-              gestureEnabled: false
+              gestureEnabled: false,
+              headerLeft: null,
             }}
           />
         </Stack.Navigator>

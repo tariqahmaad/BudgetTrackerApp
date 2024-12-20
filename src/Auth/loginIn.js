@@ -16,15 +16,16 @@ import {
     ScrollView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { auth } from '../firebase';
+import { auth, db } from '../firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Moved to local assets for consistency and performance
-const emailIcon = require('../../assets/images/emailIcon.png');
-const passwordIcon = require('../../assets/images/passwordIcon.png');
-const googleIcon = require('../../assets/images/googleIcon.png');
-const facebookIcon = require('../../assets/images/facebookIcon.png');
+const emailIcon = require('../../assets/login/emailIcon.png');
+const passwordIcon = require('../../assets/login/passwordIcon.png');
+const googleIcon = require('../../assets/login/googleIcon.png');
+const facebookIcon = require('../../assets/login/facebookIcon.png');
 
 export default function LoginIn() {
     const [email, setEmail] = useState('');
@@ -96,6 +97,24 @@ export default function LoginIn() {
                     await AsyncStorage.setItem('userEmail', email);
                 } else {
                     await AsyncStorage.removeItem('userEmail');
+                }
+
+                // Fetch user data from Firestore
+                const userDocRef = doc(db, 'users', user.uid);
+                const userSnapshot = await getDoc(userDocRef);
+
+                if (userSnapshot.exists()) {
+                    console.log('User data:', userSnapshot.data());
+
+                    // Update the last login timestamp
+                    await updateDoc(userDocRef, {
+                        lastLogin: new Date(),
+                    });
+                } else {
+                    console.error('No user data found in Firestore for this UID');
+                    Alert.alert('Error', 'User record not found. Please contact support.');
+                    setLoading(false);
+                    return;
                 }
 
                 navigation.replace('Dashboard');
