@@ -9,45 +9,21 @@ import {
     Image,
     Alert,
     StatusBar,
-    Animated,
 } from 'react-native';
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import BottomTabBar from '../components/BottomTabBar';
-import { useTab } from '../components/TabContext';
-// import MainLayout from '../components/MainLayout';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import Navbar from '../components/Navbar';
+import { TextInput } from 'react-native';
 
 const ProfileScreen = ({ navigation }) => {
     const [userData, setUserData] = useState(null);
-    const { activeTab, setActiveTab } = useTab();
-    const [tabAnimations] = useState({
-        home: new Animated.Value(1),
-        add: new Animated.Value(1),
-        track: new Animated.Value(1),
-        profile: new Animated.Value(1)
-    });
+    const [isEditingTarget, setIsEditingTarget] = useState(false);
+    const [targetAmount, setTargetAmount] = useState('');
 
     useEffect(() => {
         fetchUserProfile();
     }, []);
-
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
-            setActiveTab('profile');
-            // Reset animations for other tabs
-            Object.keys(tabAnimations).forEach(key => {
-                if (key !== 'profile') {
-                    Animated.spring(tabAnimations[key], {
-                        toValue: 0,
-                        useNativeDriver: true
-                    }).start();
-                }
-            });
-        });
-
-        return unsubscribe;
-    }, [navigation]);
 
     const fetchUserProfile = async () => {
         try {
@@ -55,11 +31,30 @@ const ProfileScreen = ({ navigation }) => {
             if (user) {
                 const userDoc = await getDoc(doc(db, 'users', user.uid));
                 if (userDoc.exists()) {
-                    setUserData(userDoc.data());
+                    const data = userDoc.data();
+                    setUserData(data);
+                    setTargetAmount(data.targetBalance?.toString() || '1250');
                 }
             }
         } catch (error) {
             console.error('Error fetching profile:', error);
+        }
+    };
+
+    const handleUpdateTarget = async () => {
+        try {
+            const user = auth.currentUser;
+            if (user) {
+                const userRef = doc(db, 'users', user.uid);
+                await updateDoc(userRef, {
+                    targetBalance: Number(targetAmount)
+                });
+                setIsEditingTarget(false);
+                Alert.alert('Success', 'Target balance updated successfully!');
+            }
+        } catch (error) {
+            console.error('Error updating target:', error);
+            Alert.alert('Error', 'Failed to update target balance');
         }
     };
 
@@ -87,77 +82,66 @@ const ProfileScreen = ({ navigation }) => {
         );
     };
 
-    const animateTab = (tabName) => {
-        // Reset all tabs
-        Object.keys(tabAnimations).forEach(key => {
-            Animated.spring(tabAnimations[key], {
-                toValue: 1,
-                useNativeDriver: true
-            }).start();
-        });
-
-        // Animate selected tab
-        Animated.sequence([
-            Animated.spring(tabAnimations[tabName], {
-                toValue: 0.8,
-                useNativeDriver: true,
-                duration: 100
-            }),
-            Animated.spring(tabAnimations[tabName], {
-                toValue: 1,
-                useNativeDriver: true,
-                bounciness: 12
-            })
-        ]).start();
-    };
-
-    const handleTabPress = (tabName) => {
-        setActiveTab(tabName);
-        if (tabName === 'home') {
-            navigation.navigate('MainApp', { screen: 'Dashboard' });
-        }
-    };
-
     return (
-        <MainLayout navigation={navigation}>
-            <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" />
-                <ScrollView contentContainerStyle={styles.scrollContent}>
-                    {/* Profile Header */}
-                    <View style={styles.profileHeader}>
-                        <Image
-                            source={userData?.profileImage ? { uri: userData.profileImage } : require('../../assets/login/userIcon.png')}
-                            style={styles.profileImage}
-                        />
-                        <Text style={styles.userName}>{userData?.name || 'User'}</Text>
-                        <Text style={styles.userEmail}>{userData?.email || 'email@example.com'}</Text>
-                    </View>
+        <SafeAreaView style={styles.container}>
+            <StatusBar barStyle="dark-content" />
+            <ScrollView contentContainerStyle={styles.scrollContent}>
+                <View style={styles.profileHeader}>
+                    <Image
+                        source={userData?.profileImage ? { uri: userData.profileImage } : require('../../assets/login/userIcon.png')}
+                        style={styles.profileImage}
+                    />
+                    <Text style={styles.userName}>{userData?.name || 'User'}</Text>
+                    <Text style={styles.userEmail}>{userData?.email || auth.currentUser?.email || 'email@example.com'}</Text>
+                </View>
 
-                    {/* Profile Options */}
-                    <View style={styles.section}>
-                        <TouchableOpacity style={styles.optionItem}>
-                            <Image source={require('../../assets/dashboard/Profile.png')} style={styles.optionIcon} />
-                            <Text style={styles.optionText}>Edit Profile</Text>
-                        </TouchableOpacity>
+                <View style={styles.section}>
+                    <TouchableOpacity 
+                        style={styles.optionItem}
+                        onPress={() => setIsEditingTarget(!isEditingTarget)}
+                    >
+                        <Text style={styles.optionText}>Target Balance: ₺{targetAmount}</Text>
+                    </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.optionItem}>
-                            {/* <Image source={require('../../assets/dashboard/notification.png')} style={styles.optionIcon} /> */}
-                            <Text style={styles.optionText}>Notifications</Text>
-                        </TouchableOpacity>
+                    {isEditingTarget && (
+                        <View style={styles.targetInputContainer}>
+                            <TextInput
+                                style={styles.targetInput}
+                                value={targetAmount}
+                                onChangeText={setTargetAmount}
+                                keyboardType="numeric"
+                                placeholder="Enter target amount"
+                            />
+                            <TouchableOpacity 
+                                style={styles.saveButton}
+                                onPress={handleUpdateTarget}
+                            >
+                                <Text style={styles.saveButtonText}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
-                        <TouchableOpacity style={styles.optionItem}>
-                            {/* <Image source={require('../../assets/dashboard/settings.png')} style={styles.optionIcon} /> */}
-                            <Text style={styles.optionText}>Settings</Text>
-                        </TouchableOpacity>
+                    <TouchableOpacity style={styles.optionItem}>
+                        <Image source={require('../../assets/dashboard/Profile.png')} style={styles.optionIcon} />
+                        <Text style={styles.optionText}>Edit Profile</Text>
+                    </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.optionItem} onPress={handleLogout}>
-                            <Image source={require('../../assets/dashboard/logout.png')} style={[styles.optionIcon, styles.logoutIcon]} />
-                            <Text style={[styles.optionText, styles.logoutText]}>Logout</Text>
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
-            </SafeAreaView>
-        </MainLayout>
+                    <TouchableOpacity style={styles.optionItem}>
+                        <Text style={styles.optionText}>Notifications</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.optionItem}>
+                        <Text style={styles.optionText}>Settings</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity style={styles.optionItem} onPress={handleLogout}>
+                        <Image source={require('../../assets/dashboard/logout.png')} style={[styles.optionIcon, styles.logoutIcon]} />
+                        <Text style={[styles.optionText, styles.logoutText]}>Logout</Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+            <Navbar />
+        </SafeAreaView>
     );
 };
 
@@ -226,6 +210,30 @@ const styles = StyleSheet.create({
     },
     logoutText: {
         color: '#ff4444',
+    },
+    targetInputContainer: {
+        padding: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+    },
+    targetInput: {
+        borderWidth: 1,
+        borderColor: '#4CAF50',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 10,
+        fontSize: 16,
+    },
+    saveButton: {
+        backgroundColor: '#4CAF50',
+        padding: 12,
+        borderRadius: 8,
+        alignItems: 'center',
+    },
+    saveButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
 

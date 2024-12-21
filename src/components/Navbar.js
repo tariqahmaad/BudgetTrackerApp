@@ -1,25 +1,104 @@
-import React from 'react';
-import { View, TouchableOpacity, Image, Text, StyleSheet } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, TouchableOpacity, Image, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// import * as Haptics from 'expo-haptics';
 
-const Navbar = ({ navigation }) => {
+const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+
+const NavbarItem = ({ route, icon, label, currentRoute, onPress }) => {
+    const itemScale = useRef(new Animated.Value(1)).current;
+    const itemOpacity = useRef(new Animated.Value(0)).current;
+    const isActive = currentRoute === route;
+
+    useEffect(() => {
+        Animated.timing(itemOpacity, {
+            toValue: isActive ? 1 : 0,
+            duration: 200,
+            useNativeDriver: true,
+        }).start();
+    }, [isActive]);
+
+    const onPressIn = () => {
+        Animated.spring(itemScale, {
+            toValue: 0.85,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const onPressOut = () => {
+        Animated.spring(itemScale, {
+            toValue: 1,
+            friction: 3,
+            tension: 40,
+            useNativeDriver: true,
+        }).start();
+    };
+
+    const handlePress = () => {
+        if (Platform.OS === 'ios') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+        onPress();
+    };
+
     return (
-        <View style={styles.bottomNav}>
-            <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Home')}>
-                <Image source={require('../../assets/dashboard/home.png')} style={styles.navIcon} />
-                <Text style={styles.navLabel}>Home</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Add')}>
-                <Image source={require('../../assets/dashboard/add.png')} style={styles.navIcon} />
-                <Text style={styles.navLabel}>Add</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('TrackDebt')}>
-                <Image source={require('../../assets/dashboard/trackDebt.png')} style={styles.navIcon} />
-                <Text style={styles.navLabel}>Track Debt</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
-                <Image source={require('../../assets/dashboard/Profile.png')} style={styles.navIcon} />
-                <Text style={styles.navLabel}>Profile</Text>
-            </TouchableOpacity>
+        <AnimatedTouchable
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
+            onPress={handlePress}
+            style={[
+                styles.navItem,
+                {
+                    transform: [{ scale: itemScale }],
+                },
+            ]}
+        >
+            <Animated.View
+                style={[
+                    styles.activeBackground,
+                    {
+                        opacity: itemOpacity,
+                    },
+                ]}
+            />
+            <Image 
+                source={icon} 
+                style={[
+                    styles.navIcon,
+                    isActive && styles.activeIcon
+                ]} 
+            />
+            <Text style={[
+                styles.navLabel,
+                isActive && styles.activeLabel
+            ]}>{label}</Text>
+        </AnimatedTouchable>
+    );
+};
+
+const Navbar = () => {
+    const navigation = useNavigation();
+    const route = useRoute();
+    const insets = useSafeAreaInsets();
+
+    const navItems = [
+        { route: 'Dashboard', icon: require('../../assets/dashboard/home.png'), label: 'Home' },
+        { route: 'AddTransaction', icon: require('../../assets/dashboard/add.png'), label: 'Add' },
+        { route: 'TrackDebt', icon: require('../../assets/dashboard/trackDebt.png'), label: 'Track Debt' },
+        { route: 'ProfileScreen', icon: require('../../assets/dashboard/Profile.png'), label: 'Profile' },
+    ];
+
+    return (
+        <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
+            {navItems.map((item) => (
+                <NavbarItem
+                    key={item.route}
+                    {...item}
+                    currentRoute={route.name}
+                    onPress={() => navigation.navigate(item.route)}
+                />
+            ))}
         </View>
     );
 };
@@ -27,34 +106,63 @@ const Navbar = ({ navigation }) => {
 const styles = StyleSheet.create({
     bottomNav: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
+        bottom: '2%',
+        left: '2%',
+        right: '2%',
         flexDirection: 'row',
         justifyContent: 'space-around',
-        backgroundColor: '#333',
-        paddingVertical: 10,
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
-        shadowColor: '#000',
+        backgroundColor: 'rgba(51, 51, 51, 0.95)',
+        paddingTop: 10,
+        paddingVertical: 12,
+        // borderTopLeftRadius: 25,
+        // borderTopRightRadius: 25,
+        borderRadius: 25,
+        shadowColor: '#1976d2',
         shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        zIndex: 100, // Ensure the Navbar is above other content
+        shadowOpacity: 0.9,
+        shadowRadius: 8,
+        elevation: 20,
+        zIndex: 100,
+        backdropFilter: 'blur(10px)',
+
     },
     navItem: {
         alignItems: 'center',
         flex: 1,
+        paddingVertical: 8,
+        borderRadius: 16,
+        position: 'relative',
+    },
+    activeBackground: {
+        position: 'absolute',
+        top: 0,
+        left: '10%',
+        right: '10%',
+        bottom: 0,
+        backgroundColor: 'rgba(242, 255, 0, 0.1)',
+        borderRadius: 18,
+
     },
     navIcon: {
         width: 24,
         height: 24,
-        marginBottom: 5,
-        tintColor: '#fff',
+        marginBottom: 3,
+        tintColor: '#f2f2f2',
+        opacity: 0.7,
+    },
+    activeIcon: {
+        tintColor: '#ffffff',
+        opacity: 1,
     },
     navLabel: {
-        fontSize: 12,
-        color: '#fff',
+        fontSize: 13,
+        color: '#f2f2f2',
+        fontWeight: '600',
+        opacity: 0.7,
+    },
+    activeLabel: {
+        opacity: 1,
+        transform: [{scale: 1.05}],
     },
 });
 
