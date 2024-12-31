@@ -77,17 +77,17 @@ const NavbarItem = ({ route, icon, label, currentRoute, onPress }) => {
     );
 };
 
-const Navbar = () => {
-    const navigation = useNavigation();
-    const route = useRoute();
+const Navbar = ({ state, navigation }) => {
     const insets = useSafeAreaInsets();
 
-    const navItems = [
-        { route: 'Dashboard', icon: require('../../assets/dashboard/home.png'), label: 'Home' },
+    const navItems = React.useMemo(() => [
+        { route: 'DashBoard', icon: require('../../assets/dashboard/home.png'), label: 'Home' },
         { route: 'AddTransaction', icon: require('../../assets/dashboard/add.png'), label: 'Add' },
         { route: 'TrackDebt', icon: require('../../assets/dashboard/trackDebt.png'), label: 'Track Debt' },
         { route: 'ProfileScreen', icon: require('../../assets/dashboard/Profile.png'), label: 'Profile' },
-    ];
+    ], []);
+
+    const currentRouteName = state.routes[state.index].name;
 
     return (
         <View style={[styles.bottomNav, { paddingBottom: Math.max(insets.bottom, 10) }]}>
@@ -95,13 +95,16 @@ const Navbar = () => {
                 <NavbarItem
                     key={item.route}
                     {...item}
-                    currentRoute={route.name}
+                    currentRoute={currentRouteName}
                     onPress={() => navigation.navigate(item.route)}
                 />
             ))}
         </View>
     );
 };
+
+// Use React.memo to prevent unnecessary re-renders
+export default React.memo(Navbar);
 
 const styles = StyleSheet.create({
     bottomNav: {
@@ -124,6 +127,7 @@ const styles = StyleSheet.create({
         elevation: 20,
         zIndex: 100,
         backdropFilter: 'blur(10px)',
+        opacity: 0.7,
 
     },
     navItem: {
@@ -139,7 +143,7 @@ const styles = StyleSheet.create({
         left: '10%',
         right: '10%',
         bottom: 0,
-        backgroundColor: 'rgba(242, 255, 0, 0.1)',
+        backgroundColor: 'rgba(0, 115, 255, 0.48)',
         borderRadius: 18,
 
     },
@@ -165,5 +169,3 @@ const styles = StyleSheet.create({
         transform: [{scale: 1.05}],
     },
 });
-
-export default Navbar;

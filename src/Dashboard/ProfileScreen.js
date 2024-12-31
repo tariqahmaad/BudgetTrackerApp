@@ -13,7 +13,6 @@ import {
 import { auth, db } from '../firebase';
 import { signOut } from 'firebase/auth';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import Navbar from '../components/Navbar';
 import { TextInput } from 'react-native';
 
 const ProfileScreen = ({ navigation }) => {
@@ -63,18 +62,17 @@ const ProfileScreen = ({ navigation }) => {
             "Logout",
             "Are you sure you want to logout?",
             [
-                {
-                    text: "Cancel",
-                    style: "cancel"
-                },
+                { text: "Cancel", style: "cancel" },
                 {
                     text: "Logout",
+                    style: "destructive",
                     onPress: async () => {
                         try {
                             await signOut(auth);
-                            navigation.replace('Login');
+                            // Remove any manual navigation - let auth state handle it
                         } catch (error) {
-                            Alert.alert('Error', 'Failed to logout');
+                            console.error('Logout error:', error);
+                            Alert.alert('Error', 'Failed to logout. Please try again.');
                         }
                     }
                 }
@@ -96,7 +94,7 @@ const ProfileScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.section}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.optionItem}
                         onPress={() => setIsEditingTarget(!isEditingTarget)}
                     >
@@ -112,7 +110,7 @@ const ProfileScreen = ({ navigation }) => {
                                 keyboardType="numeric"
                                 placeholder="Enter target amount"
                             />
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.saveButton}
                                 onPress={handleUpdateTarget}
                             >
@@ -126,11 +124,9 @@ const ProfileScreen = ({ navigation }) => {
                         <Text style={styles.optionText}>Edit Profile</Text>
                     </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.optionItem}>
-                        <Text style={styles.optionText}>Notifications</Text>
-                    </TouchableOpacity>
 
                     <TouchableOpacity style={styles.optionItem}>
+                        <Image source={require('../../assets/dashboard/setting.png')} style={styles.optionIcon} />
                         <Text style={styles.optionText}>Settings</Text>
                     </TouchableOpacity>
 
@@ -140,7 +136,6 @@ const ProfileScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
             </ScrollView>
-            <Navbar />
         </SafeAreaView>
     );
 };

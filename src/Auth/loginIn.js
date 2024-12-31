@@ -117,7 +117,8 @@ export default function LoginIn() {
                     return;
                 }
 
-                navigation.replace('Dashboard');
+                // Update the navigation to use AuthenticatedRoot instead of Dashboard
+                navigation.replace('AuthenticatedRoot');
             } else {
                 Alert.alert('Error', 'Login failed. Please try again.');
             }

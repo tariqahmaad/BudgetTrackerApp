@@ -13,6 +13,7 @@ import {
     LayoutAnimation,
     KeyboardAvoidingView,
     Platform,
+    Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -28,20 +29,19 @@ import {
     PaperProvider,
     TextInput,
     Button,
-    List,
     Divider,
     ActivityIndicator,
     useTheme,
     Chip,
-    FAB,
     Portal,
     Searchbar,
     SegmentedButtons,
-    MD3Colors,
     Snackbar,
-    Avatar
+    IconButton
 } from 'react-native-paper';
-import Navbar from '../components/Navbar';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+
 
 const TrackDebt = () => {
     const navigation = useNavigation();
@@ -70,6 +70,8 @@ const TrackDebt = () => {
     });
     const styles = { ...staticStyles, ...dynamicStyles };
 
+
+    
     useEffect(() => {
         const fetchFriendsAndTransactions = async () => {
             setLoading(true);
@@ -397,7 +399,11 @@ const TrackDebt = () => {
             >
                 <View style={styles.friendCardContent}>
                     <View style={styles.friendLeftContent}>
-                        <Avatar.Icon size={40} icon="account" style={{ marginRight: 16 }} />
+                        <IconButton
+                            icon="account"
+                            size={40}
+                            style={{ marginRight: 8 }}
+                        />
                         <View style={styles.friendInfo}>
                             <Text style={[styles.friendName, { color: theme.colors.onSurface }]}>
                                 {item.name}
@@ -414,12 +420,13 @@ const TrackDebt = () => {
                         </View>
                     </View>
                     <View style={styles.friendRightContent}>
-                        <TouchableOpacity
+                        <IconButton
+                            icon="delete-outline"
+                            size={24}
                             onPress={() => handleDeleteFriend(item.id)}
-                            style={styles.deleteButton}
-                        >
-                            <List.Icon icon="delete" color={theme.colors.error} />
-                        </TouchableOpacity>
+                            // mode="outlined"
+                            iconColor={theme.colors.error}
+                        />
                     </View>
                 </View>
                 {item.transactions.length > 0 && (
@@ -472,8 +479,16 @@ const TrackDebt = () => {
                                 value={activeTab}
                                 onValueChange={setActiveTab}
                                 buttons={[
-                                    { value: 'add', label: 'Add', icon: 'plus' },
-                                    { value: 'history', label: 'History', icon: 'history' }
+                                    { 
+                                        value: 'add', 
+                                        label: 'Add',
+                                        icon: 'plus'
+                                    },
+                                    { 
+                                        value: 'history', 
+                                        label: 'History', 
+                                        icon: 'history'
+                                    }
                                 ]}
                                 style={{ marginBottom: 16 }}
                             />
@@ -549,12 +564,12 @@ const TrackDebt = () => {
                                                                 {transaction.type === 'debt' ? 'You paid' : 'They paid'}
                                                             </Text>
                                                         </View>
-                                                        <TouchableOpacity
+                                                        <IconButton
+                                                            icon="delete"
+                                                            size={20}
                                                             onPress={() => handleDeleteTransaction(transaction.id)}
-                                                            style={styles.deleteTransactionButton}
-                                                        >
-                                                            <List.Icon icon="delete" color={theme.colors.error} size={20} />
-                                                        </TouchableOpacity>
+                                                            iconColor={theme.colors.error}
+                                                        />
                                                     </View>
                                                     <Text style={styles.transactionDate}>
                                                         {new Date(transaction.date).toLocaleString()}
@@ -605,12 +620,12 @@ const TrackDebt = () => {
                 <Text style={styles.headerTitle}>Track Debt</Text>
                 <Text style={styles.headerSubtitle}>Manage your shared expenses</Text>
             </View>
-            <TouchableOpacity
-                style={styles.addFriendButton}
+            <IconButton
+                icon="account-plus"
+                size={24}
+                iconColor="#fff"
                 onPress={() => setIsModalVisible(true)}
-            >
-                <List.Icon icon="account-plus" color="#fff" />
-            </TouchableOpacity>
+            />
         </View>
     );
 
@@ -624,6 +639,7 @@ const TrackDebt = () => {
                     onChangeText={setSearchQuery}
                     style={styles.searchBar}
                     inputStyle={styles.searchBarInput}
+                    icon={() => <Icon name="magnify" size={20} />}
                 />
                 <View style={styles.filterContainer}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -678,7 +694,6 @@ const TrackDebt = () => {
                 >
                     {snackbarMessage}
                 </Snackbar>
-                <Navbar />
             </SafeAreaView>
         </PaperProvider>
     );

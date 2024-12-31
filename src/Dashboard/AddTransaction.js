@@ -18,11 +18,11 @@ import {
     PaperProvider,
 } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Navbar from '../components/Navbar';
 import {
     collection,
     addDoc,
     serverTimestamp,
+    Timestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
@@ -33,59 +33,17 @@ const TransactionPage = ({ navigation }) => {
     const theme = useTheme();
     const [amount, setAmount] = useState('');
     const [transactionType, setTransactionType] = useState('expense'); // 'expense' or 'income'
-    const cursorAnimation = useRef(new Animated.Value(1)).current;
     const [loading, setLoading] = useState(false);
-    const slideAnimation = useRef(new Animated.Value(0)).current;
-    const scaleAnimation = useRef(new Animated.Value(0.95)).current;
     const amountAnimation = useRef(new Animated.Value(1)).current;
 
     // Using the same primary color as the Dashboard's buttons
     const primaryColor = '#1976d2'; // You can also get this from the theme if you have it defined there
 
+    // Simplified amount animation effect
     useEffect(() => {
-        const cursorBlink = Animated.loop(
-            Animated.sequence([
-                Animated.timing(cursorAnimation, {
-                    toValue: 0,
-                    duration: 600,
-                    easing: Easing.easeOut,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(cursorAnimation, {
-                    toValue: 1,
-                    duration: 600,
-                    easing: Easing.easeIn,
-                    useNativeDriver: true,
-                }),
-            ])
-        );
+        if (!amount) return;
 
-        cursorBlink.start();
-
-        return () => cursorBlink.stop();
-    }, [cursorAnimation]);
-
-    useEffect(() => {
-        // Entrance animation
-        Animated.parallel([
-            Animated.timing(slideAnimation, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-                easing: Easing.out(Easing.ease),
-            }),
-            Animated.spring(scaleAnimation, {
-                toValue: 1,
-                useNativeDriver: true,
-                tension: 50,
-                friction: 7,
-            }),
-        ]).start();
-    }, []);
-
-    useEffect(() => {
-        // Amount change animation
-        Animated.sequence([
+        const animation = Animated.sequence([
             Animated.timing(amountAnimation, {
                 toValue: 1.1,
                 duration: 100,
@@ -96,7 +54,11 @@ const TransactionPage = ({ navigation }) => {
                 duration: 100,
                 useNativeDriver: true,
             }),
-        ]).start();
+        ]);
+
+        animation.start();
+
+        return () => animation.stop();
     }, [amount]);
 
     const formatAmount = (value) => {
@@ -140,58 +102,34 @@ const TransactionPage = ({ navigation }) => {
         setAmount(prev => prev.slice(0, -1));
     };
 
+    // Modify handleConfirmTransaction to handle navigation more gracefully
     const handleConfirmTransaction = async () => {
         if (!amount || loading) return;
-
-        Animated.sequence([
-            Animated.spring(scaleAnimation, {
-                toValue: 0.95,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scaleAnimation, {
-                toValue: 1,
-                useNativeDriver: true,
-            }),
-        ]).start();
 
         setLoading(true);
         try {
             const user = auth.currentUser;
             if (!user) throw new Error('User not authenticated');
 
-            const now = serverTimestamp();
-            const numericAmount = Number(parseFloat(amount).toFixed(2));
+            const now = new Date();
+            const timestamp = Timestamp.fromDate(now);
+            const numericAmount = parseFloat(parseFloat(amount).toFixed(2));
             
             const transactionData = {
                 amount: numericAmount,
                 type: transactionType,
-                date: new Date().toISOString(),
-                timestamp: now,
+                date: timestamp, // This ensures proper date storage
                 description: `${transactionType === 'income' ? 'Income' : 'Expense'} Transaction`,
                 userId: user.uid,
-                createdAt: now,
+                createdAt: serverTimestamp(),
             };
 
             const transactionsRef = collection(db, 'users', user.uid, 'transactions');
             await addDoc(transactionsRef, transactionData);
 
-            // Success handling
             setAmount('');
             setLoading(false);
-            Animated.sequence([
-                Animated.timing(slideAnimation, {
-                    toValue: 0,
-                    duration: 200,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(scaleAnimation, {
-                    toValue: 0.9,
-                    duration: 200,
-                    useNativeDriver: true,
-                }),
-            ]).start(() => {
-                navigation.goBack();
-            });
+            navigation.goBack();
         } catch (error) {
             console.error('Transaction error:', error);
             setLoading(false);
@@ -200,23 +138,7 @@ const TransactionPage = ({ navigation }) => {
     };
 
     const renderHeader = () => (
-        <Animated.View 
-            style={[
-                styles.header,
-                {
-                    transform: [
-                        {
-                            translateY: slideAnimation.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [-50, 0],
-                            }),
-                        },
-                        { scale: scaleAnimation },
-                    ],
-                    opacity: slideAnimation,
-                },
-            ]}
-        >
+        <View style={styles.header}>
             <View style={styles.headerContent}>
                 <Text style={styles.headerTitle}>Add Transaction</Text>
                 <Animated.Text 
@@ -256,7 +178,7 @@ const TransactionPage = ({ navigation }) => {
                     </Button>
                 </View>
             </View>
-        </Animated.View>
+        </View>
     );
 
     return (
@@ -265,22 +187,7 @@ const TransactionPage = ({ navigation }) => {
                 <StatusBar barStyle="light-content" />
                 {renderHeader()}
 
-                <Animated.View 
-                    style={[
-                        styles.keypadContainer,
-                        {
-                            transform: [
-                                {
-                                    translateY: slideAnimation.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [100, 0],
-                                    }),
-                                },
-                            ],
-                            opacity: slideAnimation,
-                        },
-                    ]}
-                >
+                <View style={styles.keypadContainer}>
                     <View style={styles.keypadWrapper}>
                         <View style={styles.keypad}>
                             {[['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], ['.', '0', '⌫']].map((row, rowIndex) => (
@@ -323,9 +230,7 @@ const TransactionPage = ({ navigation }) => {
                             </Button>
                         </View>
                     </View>
-                </Animated.View>
-
-                <Navbar />
+                </View>
             </SafeAreaView>
         </PaperProvider>
     );

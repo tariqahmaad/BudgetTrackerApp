@@ -15,10 +15,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { onAuthStateChanged } from 'firebase/auth';
 import { collection, getDocs, query, where, doc, getDoc, orderBy, limit, onSnapshot,Timestamp } from 'firebase/firestore';
-import { ProgressBar } from 'react-native-paper';
+import { ProgressBar, Portal, Modal } from 'react-native-paper';
 import { auth, db } from '../firebase';  // Update the path if needed
 import LottieView from 'lottie-react-native';
-import Navbar from '../components/Navbar'; // Assuming you have the Navbar component
 import { LineChart } from 'react-native-chart-kit';
 
 const screenWidth = Dimensions.get('window').width;
@@ -36,6 +35,8 @@ const Dashboard = () => {
         data: [0, 0, 0, 0]
     });
     const [refreshing, setRefreshing] = useState(false);
+    const [showAllTransactions, setShowAllTransactions] = useState(false);
+    const [allTransactions, setAllTransactions] = useState([]);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, user => {
@@ -137,24 +138,31 @@ const Dashboard = () => {
             const transactionsRef = collection(db, 'users', userId, 'transactions');
             const recentTransactionsQuery = query(
                 transactionsRef,
-                orderBy('date', 'desc'),
-                limit(5)
+                orderBy('date', 'desc')
             );
             const transactionsSnap = await getDocs(recentTransactionsQuery);
             const activityData = [];
 
             transactionsSnap.forEach((doc) => {
                 const data = doc.data();
+                const date = data.date instanceof Timestamp ? data.date.toDate() : new Date(data.date);
+                
                 activityData.push({
                     id: doc.id,
                     description: data.description || 'Transaction',
                     name: userName,
                     amount: data.type === 'income' ? `+${data.amount.toFixed(2)}` : `-${data.amount.toFixed(2)}`,
-                    date: data.date,
+                    date: date,
+                    type: data.type,
+                    timestamp: date.getTime() // Add timestamp for easier sorting
                 });
             });
 
-            setRecentActivity(activityData);
+            // Sort by timestamp in descending order
+            activityData.sort((a, b) => b.timestamp - a.timestamp);
+
+            setAllTransactions(activityData);
+            setRecentActivity(activityData.slice(0, 5));
         } catch (error) {
             console.error("Error fetching recent activity:", error);
             Alert.alert('Error', 'Failed to fetch recent activity.');
@@ -163,23 +171,9 @@ const Dashboard = () => {
 
     const fetchMonthlySpending = async userId => {
         try {
-            // Create timestamp with precise integer values
             const now = new Date();
-            const startOfMonth = new Date(
-                Date.UTC(
-                    now.getFullYear(),
-                    now.getMonth(),
-                    1,
-                    0,
-                    0,
-                    0,
-                    0
-                )
-            );
-            
-            const startTimestamp = Timestamp.fromMillis(
-                Math.floor(startOfMonth.getTime())
-            );
+            const startOfMonth = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+            const startTimestamp = Timestamp.fromDate(startOfMonth);
 
             const transactionsRef = collection(db, 'users', userId, 'transactions');
             const q = query(
@@ -190,39 +184,40 @@ const Dashboard = () => {
             );
 
             const querySnapshot = await getDocs(q);
-            const weeklyTotals = [0, 0, 0, 0];
+            // Initialize arrays with integers (cents)
+            const weeklyTotalsCents = [0, 0, 0, 0];
 
             querySnapshot.forEach(doc => {
                 const data = doc.data();
-                // Convert timestamp to milliseconds first
-                const transactionMillis = data.date.toMillis();
-                const transactionDate = new Date(transactionMillis);
-                // Use UTC to avoid timezone issues
-                const dayOfMonth = transactionDate.getUTCDate();
-                // Integer division for week index
-                const weekIndex = Math.floor((dayOfMonth - 1) / 7);
-
-                if (weekIndex >= 0 && weekIndex < 4) {
-                    // Round to 2 decimal places to avoid floating point issues
-                    const amount = Math.round(data.amount * 100) / 100;
-                    weeklyTotals[weekIndex] += amount;
+                if (data.date && data.amount) {
+                    const transactionDate = data.date.toDate();
+                    const dayOfMonth = transactionDate.getDate();
+                    const weekIndex = Math.min(Math.floor((dayOfMonth - 1) / 7), 3);
+                    
+                    // Convert amount to cents (integer)
+                    const amountInCents = Math.round(parseFloat(data.amount) * 100);
+                    
+                    if (!isNaN(amountInCents) && weekIndex >= 0 && weekIndex < 4) {
+                        weeklyTotalsCents[weekIndex] += amountInCents;
+                    }
                 }
             });
 
-            // Round final totals
-            const cleanWeeklyTotals = weeklyTotals.map(
-                amount => Math.round(amount * 100) / 100
+            // Convert cents back to dollars with 2 decimal places
+            const weeklyTotals = weeklyTotalsCents.map(cents => 
+                Number((cents / 100).toFixed(2))
             );
 
             setMonthlySpending({
                 labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-                data: cleanWeeklyTotals,
+                data: weeklyTotals
             });
         } catch (error) {
             console.error('Error fetching monthly spending:', error);
             Alert.alert('Error', 'Failed to fetch monthly spending data.');
         }
     };
+
         
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
@@ -272,6 +267,37 @@ const Dashboard = () => {
         });
     };
 
+    const renderTransactionItem = (activity) => (
+        <View key={activity.id} style={styles.activityItem}>
+            <View style={[
+                styles.activityIconContainer,
+                { backgroundColor: activity.amount.includes('+') ? '#e6f7ed' : '#ffe6e6' }
+            ]}>
+                <Text style={styles.activityEmoji}>
+                    {activity.amount.includes('+') ? '↗️' : '↘️'}
+                </Text>
+            </View>
+            <View style={styles.activityDetails}>
+                <Text style={styles.activityDescription}>{activity.description}</Text>
+                <Text style={styles.activityDate}>
+                    {activity.date.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })}
+                </Text>
+            </View>
+            <Text style={[
+                styles.activityAmount,
+                { color: activity.amount.includes('+') ? '#2e7d32' : '#d32f2f' }
+            ]}>
+                {activity.amount}
+            </Text>
+        </View>
+    );
+
     return (
         <SafeAreaView style={styles.container} edges={['top']}>
             <StatusBar barStyle="dark-content" />
@@ -305,7 +331,7 @@ const Dashboard = () => {
                     </View>
                     <ProgressBar
                         progress={progress}
-                        color="#FFFFFF"
+                        color="#4CAF50" // yellow color for progress
                         style={styles.progressBar}
                     />
                     <View style={styles.progressTextContainer}>
@@ -384,35 +410,46 @@ const Dashboard = () => {
                 </ScrollView>
 
                 <View style={styles.activityContainer}>
-                    <Text style={styles.sectionTitle}>Recent Activity</Text>
-                    {recentActivity.map((activity) => (
-                        <View key={activity.id} style={styles.activityItem}>
-                            <View style={[
-                                styles.activityIconContainer,
-                                { backgroundColor: activity.amount.includes('+') ? '#e6f7ed' : '#ffe6e6' }
-                            ]}>
-                                <Text style={styles.activityEmoji}>
-                                    {activity.amount.includes('+') ? '↗️' : '↘️'}
-                                </Text>
-                            </View>
-                            <View style={styles.activityDetails}>
-                                <Text style={styles.activityDescription}>{activity.description}</Text>
-                                <Text style={styles.activityDate}>
-                                    {new Date(activity.date).toLocaleDateString()}
-                                </Text>
-                            </View>
-                            <Text style={[
-                                styles.activityAmount,
-                                { color: activity.amount.includes('+') ? '#2e7d32' : '#d32f2f' }
-                            ]}>
-                                {activity.amount}
-                            </Text>
-                        </View>
-                    ))}
+                    <View style={styles.activityHeader}>
+                        <Text style={styles.sectionTitle}>Recent Activity</Text>
+                        <TouchableOpacity onPress={() => setShowAllTransactions(true)}>
+                            <Text style={styles.seeAllButtonText}>See All</Text>
+                        </TouchableOpacity>
+                    </View>
+                    {recentActivity.map(renderTransactionItem)}
                 </View>
             </ScrollView>
 
-            <Navbar />
+            <Portal>
+                <Modal
+                    visible={showAllTransactions}
+                    onDismiss={() => setShowAllTransactions(false)}
+                    contentContainerStyle={styles.modalContainer}
+                >
+                    <View style={styles.modalOverlay}>
+                        <SafeAreaView style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <View>
+                                    <Text style={styles.modalTitle}>Transaction History</Text>
+                                    <Text style={styles.modalSubtitle}>All your recent transactions</Text>
+                                </View>
+                                <TouchableOpacity 
+                                    onPress={() => setShowAllTransactions(false)}
+                                    style={styles.closeButtonContainer}
+                                >
+                                    <Text style={styles.closeButton}>✕</Text>
+                                </TouchableOpacity>
+                            </View>
+                            <ScrollView 
+                                style={styles.modalScroll}
+                                showsVerticalScrollIndicator={false}
+                            >
+                                {allTransactions.map(renderTransactionItem)}
+                            </ScrollView>
+                        </SafeAreaView>
+                    </View>
+                </Modal>
+            </Portal>
         </SafeAreaView>
     );
 };
@@ -732,6 +769,53 @@ const styles = StyleSheet.create({
         color: '#fff',
         marginBottom: 16,
         marginLeft: 8,
+    },
+    activityHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 15,
+    },
+    modalContainer: {
+        margin: 0,
+        padding: 20, // Added padding around the modal
+        flex: 1,
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        backgroundColor: '#f8f9fa',
+        borderRadius: 35, // Changed to have all corners rounded
+        height: '90%',
+        width: '100%',
+        paddingHorizontal: 15,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: -4,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 8,
+        elevation: 5,
+        overflow: 'hidden', // Added to ensure content respects border radius
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 20,
+        backgroundColor: '#ffffff',
+        borderRadius: 35, // Match the container radius
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        marginHorizontal: -15,
+        marginBottom: 10, // Added spacing between header and content
+    },
+    modalScroll: {
+        flex: 1,
+        padding: 20,
+        backgroundColor: '#f8f9fa',
+        borderBottomLeftRadius: 35, // Added bottom radius
+        borderBottomRightRadius: 35, // Added bottom radius
     },
 });
 
